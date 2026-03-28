@@ -30,6 +30,9 @@
     <ClCompile Include="State.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="StateMachine.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderer.h">
@@ -45,6 +48,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="State.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="StateMachine.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
