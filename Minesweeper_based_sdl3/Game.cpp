@@ -2,12 +2,19 @@
 
 // 实现 Game 类方法
 Game::Game() : stateMachine_(StateMachine()), running_(true) {
-	//state默认menu,二次调用确保状态为menu
-	stateMachine_.changeStates(StateType::Menu);
+	// 初始化 SDL 视频和事件子系统
+	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+		SDL_Log("Failed to initialize SDL: %s", SDL_GetError());
+		return;
+	}
+	// 初始化 SDL_ttf 库，必须在创建窗口和渲染器之前调用
+	if (!TTF_Init()) {
+		SDL_Log("Failed to initialize SDL_ttf: %s", SDL_GetError());
+		return;
+	}
 }
 
 void Game::Run() noexcept {
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS); // 初始化 SDL 视频和事件子系统
 
 	while (running_) {
 		SDL_Event event;
@@ -16,6 +23,10 @@ void Game::Run() noexcept {
 				running_ = false; // 处理退出事件，设置运行标志为 false 以退出主循环
 			}
 		}
+
 		stateMachine_.update();
+
+		SDL_Delay(16);//
+
 	}
 }

@@ -1,6 +1,5 @@
 #pragma once
 #include "StateMachine.h"
-#include "Renderer.h"
 #include <memory>
 #include <SDL3/SDL.h>
 
