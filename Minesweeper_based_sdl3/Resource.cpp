@@ -1,30 +1,45 @@
 #include <string>
 #include "Resource.h"
 
+std::array<SDL_Texture*, 13> textures_;
+
 Resource::Resource(){
 	//绑定数字纹理
     SDL_Texture* t = nullptr;
-    for (int i = 0; i < 12; ++i) {
+    for (int i = 0; i < 13; ++i) {
         if (i < 9) {
             t = getTexture();
             SDL_SetRenderTarget(Renderer::getInstance().getSDLRenderer(), t);
-            Renderer::getInstance().renderText(std::to_string(i), numberColors_[i], SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, numSize); // 绘制数字到纹理
+            SDL_RenderClear(Renderer::getInstance().getSDLRenderer()); // 清空纹理
+
+            Renderer::getInstance().renderFillRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(150, 150, 150, 255)); // 绘制打开的方块边框
+            Renderer::getInstance().renderRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(200, 200, 200, 255)); // 绘制边框
+			if (i > 0)
+                Renderer::getInstance().renderText(std::to_string(i), numberColors_[i], SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, numSize); // 绘制数字到纹理
         }
         else {
             t = getTexture();
             SDL_SetRenderTarget(Renderer::getInstance().getSDLRenderer(), t);
+            SDL_RenderClear(Renderer::getInstance().getSDLRenderer()); // 清空纹理
+
             if (i == 9) {
-                Renderer::getInstance().renderRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(100, 100, 100, 255)); // 绘制方块边框
+                Renderer::getInstance().renderFillRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(100, 100, 100, 255)); // 绘制方块边框
+                Renderer::getInstance().renderRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(200, 200, 200, 255)); // 绘制边框
             }
             else if (i == 10) {
-                Renderer::getInstance().renderRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(150, 150, 150, 255)); // 绘制打开的方块边框
+                Renderer::getInstance().renderFillRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(150, 150, 150, 255)); // 绘制打开的方块边框
+                Renderer::getInstance().renderRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(200, 200, 200, 255)); // 绘制边框
             }
             else if (i == 11) {
+                Renderer::getInstance().renderFillRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(100, 100, 100, 255)); // 绘制方块边框
+                Renderer::getInstance().renderRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(200, 200, 200, 255)); // 绘制边框
                 drawMine(Renderer::getInstance().getSDLRenderer(), SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }); // 绘制地雷
 			}
             else if (i == 12) {
+                Renderer::getInstance().renderFillRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(100, 100, 100, 255)); // 绘制方块边框
+                Renderer::getInstance().renderRect(SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }, SDL_Color(200, 200, 200, 255)); // 绘制边框
 				drawFlag(Renderer::getInstance().getSDLRenderer(), SDL_FRect{ 0, 0, CELL_SIZE, CELL_SIZE }); // 绘制旗子
-            }
+			}
         }
 
 		textures_[i] = t; // 存储纹理指针
@@ -95,9 +110,9 @@ inline void Resource::drawFlag(SDL_Renderer* renderer, const SDL_FRect& rect) {
 }
 
 SDL_Texture* Resource::getTexture(){
-    SDL_Texture* t = SDL_CreateTexture(nullptr, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, CELL_SIZE, CELL_SIZE); // 创建纹理，实际使用时需要检查返回值是否成功，并存储到 textures_ 中
+    SDL_Texture* t = SDL_CreateTexture(Renderer::getInstance().getSDLRenderer(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, CELL_SIZE, CELL_SIZE); // 创建纹理，实际使用时需要检查返回值是否成功，并存储到 textures_ 中
     if (!t) {
-        SDL_Log("Failed to create texture for number %d: %s", i, SDL_GetError());
+		SDL_Log("Failed to create texture: %s", SDL_GetError());
         return nullptr;
     }
     return t;

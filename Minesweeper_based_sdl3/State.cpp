@@ -8,6 +8,7 @@ MenuState::MenuState() noexcept : State(StateType::Menu), windowSize_({800, 600}
 	float buttonWidth = 200.0;
 	float buttonHeight = 50.0;
 	auto [w, h] = windowSize_;
+	Renderer::getInstance().updateWindow(w, h); // 调整窗口大小，更新相关资源
 	for(int i = 0; i < buttonCount_; ++i) {
 		float x = (w - buttonWidth) / 2.0f;
 		float y = (h - buttonHeight * buttonCount_) / 2.0f + i * (buttonHeight + 20);
@@ -41,20 +42,45 @@ std::optional<State::StateTransInfo> MenuState::update(SDL_Event& event) noexcep
 	return std::nullopt; // 如果 handleInput() 返回 true，表示需要切换到 Playing 状态，否则保持当前状态
 }
 
+//-----------------------------PlayingState-----------------------------//
 PlayingState::PlayingState(StateTransInfo info) noexcept : State(StateType::Playing) , board_(info.rows, info.cols, info.mines){
-
+	Renderer::getInstance().updateWindow(info.cols * CELL_SIZE, (info.rows + UP_BLOCKS) * CELL_SIZE); // 调整窗口大小以适应棋盘
 }
 
-//-----------------------------PlayingState-----------------------------//
 void PlayingState::renderer() const noexcept{
 	Renderer::getInstance().beginRender();
 
-
+	auto& d = board_.render();
+	Renderer::getInstance().renderDirtyBlocks(d); // 渲染脏格子，仅重绘改变的格子，优化性能
+	 // 获取需要渲染的格子列表（脏格子），并清空脏格子列表，实际使用时需要根据 Board 类的接口调整
 
 	Renderer::getInstance().reDefaultAndPresent();
 }
 
 std::optional<State::StateTransInfo> PlayingState::update(SDL_Event& event) noexcept{
+	if(event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+		int row = (event.button.y / CELL_SIZE) - UP_BLOCKS;
+		int col = event.button.x / CELL_SIZE;
+		//SDL_Log("Mouse click at row %d, col %d", row, col);
+		if (col >= 0 && row >= 0) {
+			if (event.button.button == SDL_BUTTON_LEFT) {
+				board_.reveal(row, col); // 打开格子
+
+				if (event.button.clicks == 1) {
+				}
+				else if(event.button.clicks == 2){
+
+				}
+			} else if (event.button.button == SDL_BUTTON_RIGHT) {
+				board_.toggleFlag(row, col); // 切换标记
+			}
+		}
+	}
+	//if(board_.isWin()) {
+	//	return { { StateType::Won, 0, 0, 0 } }; // 切换到 Won 状态
+	//} else if (board_.isLose()) {
+	//	return { { StateType::Lost, 0, 0, 0 } }; // 切换到 Lost 状态
+	//}
 
 	return std::nullopt;
 }

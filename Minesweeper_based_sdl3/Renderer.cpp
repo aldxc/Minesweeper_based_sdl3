@@ -1,10 +1,9 @@
 #include "Renderer.h"
-
+#include <assert.h>
 // 实现 Renderer 类方法
 
 Renderer::Renderer(){
 	initResources("Minesweeper", 800, 600); // 初始化资源
-
 }
 
 Renderer::~Renderer() {
@@ -67,6 +66,11 @@ void Renderer::renderRect(const SDL_FRect& rect, const SDL_Color& color) const n
 
 }
 
+void Renderer::renderFillRect(const SDL_FRect& rect, const SDL_Color& color) const noexcept{
+	SDL_SetRenderDrawColor(renderer_.get(), color.r, color.g, color.b, color.a); // 设置绘制颜色
+	SDL_RenderFillRect(renderer_.get(), &rect); // 绘制矩形
+}
+
 void Renderer::renderText(const std::string& text, const SDL_Color& color, const SDL_FRect& rect, const int textsize) noexcept{
 	TTF_Text* t = TTF_CreateText(textEngine_.get(), font_.get(), text.c_str(), text.size()); // 创建文本对象，实际使用时需要检查返回值是否成功
 	if (!t) {
@@ -90,13 +94,77 @@ void Renderer::renderTexts(const std::vector<std::string>& texts, const std::vec
 	}
 }
 
-void Renderer::renderDirtyBlocks() const noexcept{
+void Renderer::renderDirtyBlocks(const std::vector<Board::transInfo>& blocks) const noexcept{
 
+	int windowWidth = 0, windowHeight = 0;
+	SDL_GetWindowSize(window_.get(), &windowWidth, &windowHeight);
+	int rows = windowHeight / CELL_SIZE - UP_BLOCKS;//行数
+	int cols = windowWidth / CELL_SIZE;//列数
+	if (rows < 0) rows = 0;
+
+	if(!blocks.empty()) updateTexture(blocks, rows, cols);
+
+	//test
+	//SDL_FRect rect{ 0,0,CELL_SIZE, CELL_SIZE };
+	//SDL_RenderTexture(renderer_.get(), textures_[9], nullptr, &rect); // 绘制未掀开状态的纹理到整个窗口，测试纹理是否正确加载
+
+	for (int i = 0; i < dirtyBlockIndices_.size(); ++i) {
+		int stateIdx = dirtyBlockIndices_[i];
+		// 防御性检查：stateIdx 必须在 textures_ 范围内
+		if (stateIdx < 0 || stateIdx >= static_cast<int>(textures_.size())) {
+			SDL_Log("Invalid state index %d at dirtyBlockIndices_[%d]", stateIdx, i);
+			continue;
+		}
+		auto tex = textures_[stateIdx];
+		if (!tex) continue;
+
+		SDL_FRect dstRect{
+			(i % cols) * CELL_SIZE, ((i / cols) + UP_BLOCKS) * CELL_SIZE, CELL_SIZE, CELL_SIZE
+		};
+		SDL_RenderTexture(renderer_.get(), tex, nullptr, &dstRect);
+	}
 }
+
+
 
 void Renderer::reDefaultAndPresent() const noexcept{
 	SDL_SetRenderDrawColor(renderer_.get(), 0, 0, 0, 255); // 恢复默认绘制颜色
 	TTF_SetFontSize(font_.get(), 30); // 恢复字体大小
 	SDL_RenderPresent(renderer_.get()); // 显示渲染结果，更新窗口内容
+}
+
+void Renderer::updateWindow(int width, int height) noexcept{
+	SDL_SetWindowSize(window_.get(), width, height); // 调整窗口大小
+	int cols = width / CELL_SIZE;
+	int rows = height / CELL_SIZE - UP_BLOCKS;
+	if (rows < 0) rows = 0;
+	dirtyBlockIndices_.resize(cols * rows);
+	// 将新的脏块数组初始化为“未掀开状态”（9），避免未初始化或默认 0 导致错误显示
+	dirtyBlockIndices_.assign(cols * rows, 9);
+}
+
+//暂时弃用
+//void Renderer::renderBoard(const std::vector<uint8_t>& board) const noexcept{
+//	int windowWidth = 0, windowHeight = 0;
+//	SDL_GetWindowSize(window_.get(), &windowWidth, &windowHeight);
+//	int rows = windowHeight / CELL_SIZE - UP_BLOCKS;//行数
+//	int cols = windowWidth / CELL_SIZE;//列数
+//
+//	for (int i = 0; i < board.size(); ++i) {
+//		SDL_FRect dstrect{
+//			i, i * CELL_SIZE, CELL_SIZE, CELL_SIZE
+//		};
+//		//if (board[i] & Board::maskDirty) {
+//			SDL_RenderTexture(renderer_.get(), textures_[9], nullptr, &dstrect); // 绘制未掀开状态的纹理到整个窗口，测试纹理是否正确加载
+//		//}
+//	}
+//}
+
+void Renderer::updateTexture(const std::vector<Board::transInfo>& blocks, int rows, int cols) const noexcept{
+	for(int i = 0; i < blocks.size(); ++i) {
+		int index = blocks[i].row * cols + blocks[i].col;
+		if(index >=0 && index < dirtyBlockIndices_.size())
+			dirtyBlockIndices_[index] = blocks[i].state; // 更新脏格子索引列表
+	}
 }
 
