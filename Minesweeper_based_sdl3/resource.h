@@ -2,75 +2,48 @@
 
 #include <SDL3/SDL.h>
 #include <cmath>
+#include <array>
+#include "Renderer.h"
+
+constexpr int CELL_SIZE = 40; // 每个格子的像素尺寸
+constexpr std::array<std::array<int, 3>, 3> BORAD_INFO = { {
+    {10, 10, 20},
+    {16, 16, 40},
+    {24, 24, 99}
+}};
 
 // resource.h 提供基于线段/像素绘制的简单图形：旗子与地雷
 // 所有函数为 inline，直接使用 SDL_Renderer* 绘制到屏幕
-
-inline void drawFilledCircle(SDL_Renderer* renderer, int cx, int cy, int radius) {
-    // 使用水平线段填充算法绘制实心圆
-    for (int dy = -radius; dy <= radius; ++dy) {
-        int dx = static_cast<int>(std::sqrt(radius * radius - dy * dy));
-		SDL_RenderLine(renderer, cx - dx, cy + dy, cx + dx, cy + dy);
+//Resource 借用 Renderer 的 SDL 上下文创建资源
+class Resource {
+public:
+    Resource();
+	~Resource() = default;
+	std::array<SDL_Texture*, 12> getTextures() const noexcept { return textures_; } // 获取预渲染的纹理数组，供 PlayingState 等类使用
+private:
+    void drawMine(SDL_Renderer* renderer, const SDL_FRect& rect); // 绘制地雷
+	void drawFlag(SDL_Renderer* renderer, const SDL_FRect& rect); // 绘制旗子
+    inline void drawFilledCircle(SDL_Renderer* renderer, int cx, int cy, int radius) {
+        // 使用水平线段填充算法绘制实心圆
+        for (int dy = -radius; dy <= radius; ++dy) {
+            int dx = static_cast<int>(std::sqrt(radius * radius - dy * dy));
+            SDL_RenderLine(renderer, cx - dx, cy + dy, cx + dx, cy + dy);
+        }
     }
-}
+	std::array<SDL_Texture*, 12> textures_; // 预渲染的纹理：0-8 数字，9 方块，10 打开的方块，11 雷，12 旗子，
+    std::array<SDL_Color, 9> numberColors_ = { // 数字颜色，1-8 分别为蓝绿红紫深蓝绿红黑
+        SDL_Color(0, 0, 255, 255),    // 1 - 蓝色
+        SDL_Color(0, 128, 0, 255),    // 2 - 绿色
+        SDL_Color(255, 0, 0, 255),    // 3 - 红色
+        SDL_Color(128, 0, 128, 255),  // 4 - 紫色
+        SDL_Color(0, 0, 128, 255),    // 5 - 深蓝色
+        SDL_Color(0, 128, 128, 255),  // 6 - 青色
+        SDL_Color(255, 0, 255, 255),   // 7 - 洋红色
+        SDL_Color(0, 0, 0, 255)       // 8 - 黑色
+	};
+	const int numSize = 30; // 数字文本大小
+    SDL_Texture* getTexture();
+};
 
-inline void drawMine(SDL_Renderer* renderer, const SDL_FRect& rect) {
-    // 在给定 rect 中心绘制地雷（黑圆 + 放射线）
-    int cx = rect.x + rect.w / 2;
-    int cy = rect.y + rect.h / 2;
-    int r = std::min(rect.w, rect.h) / 3; // 半径
 
-    // 圆心填充（黑色）
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    drawFilledCircle(renderer, cx, cy, r);
 
-    // 放射状的线（灰色）表示地雷触角
-    SDL_SetRenderDrawColor(renderer, 120, 120, 120, 255);
-    const int spokes = 8;
-    const double PI = std::acos(-1.0);
-    for (int i = 0; i < spokes; ++i) {
-        double angle = (2.0 * PI * i) / spokes;
-        int x2 = static_cast<int>(cx + (r + 6) * std::cos(angle));
-        int y2 = static_cast<int>(cy + (r + 6) * std::sin(angle));
-		SDL_RenderLine(renderer, cx, cy, x2, y2);
-    }
-}
-
-inline void drawFlag(SDL_Renderer* renderer, const SDL_FRect& rect) {
-    // 在给定 rect 中绘制一个简易的旗子（旗杆 + 三角形旗帜）
-    int x = rect.x;
-    int y = rect.y;
-    int w = rect.w;
-    int h = rect.h;
-
-    // 旗杆（深棕色）
-    SDL_SetRenderDrawColor(renderer, 101, 67, 33, 255);
-    int poleX = x + w / 4;
-	SDL_RenderLine(renderer, poleX, y + h / 6, poleX, y + (5 * h) / 6);
-
-    // 旗帜（红色）：用三角形近似（两条线）
-    SDL_SetRenderDrawColor(renderer, 200, 0, 0, 255);
-    int fx1 = poleX;
-    int fy1 = y + h / 6;
-    int fx2 = x + (3 * w) / 4;
-    int fy2 = y + h / 3;
-    int fx3 = poleX;
-    int fy3 = y + h / 2;
-    // 绘制三角形的边界（填充可通过水平线段实现）
-    // 简单填充：对每一行计算左右边界并绘制
-    int top = std::min({fy1, fy2, fy3});
-    int bottom = std::max({fy1, fy2, fy3});
-    for (int yy = top; yy <= bottom; ++yy) {
-        // 线性插值计算左右边界（简单方法，足够用于小旗帜）
-        // 计算与两边线段的交点并取最小/最大
-        // 为简便使用固定填充宽度
-        int left = std::min(fx1, fx3);
-        int right = fx2;
-		SDL_RenderLine(renderer, left, yy, right, yy);
-    }
-
-    // 旗杆顶部小方块（黑色）
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_FRect topRect{poleX - 1, y + h / 6 - 2, 3, 3};
-    SDL_RenderFillRect(renderer, &topRect);
-}

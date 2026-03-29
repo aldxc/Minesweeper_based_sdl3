@@ -22,11 +22,11 @@ void Game::Run() noexcept {
 			if(event.type == SDL_EVENT_QUIT) {
 				running_ = false; // 处理退出事件，设置运行标志为 false 以退出主循环
 			}
-		}
 
-		stateMachine_.update();
+			stateMachine_.update(event);
+		}
+		stateMachine_.render(); // 渲染当前状态
 
 		SDL_Delay(16);//
-
 	}
 }

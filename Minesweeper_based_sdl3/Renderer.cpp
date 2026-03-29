@@ -3,7 +3,7 @@
 // 实现 Renderer 类方法
 
 Renderer::Renderer(){
-	initResources("SDL Minesweeper", 800, 600); // 初始化资源
+	initResources("Minesweeper", 800, 600); // 初始化资源
 
 }
 
@@ -21,8 +21,6 @@ Renderer::~Renderer() {
 }
 
 void Renderer::initResources(const char* title, int width, int height) noexcept{
-
-
 	// 创建 SDL 窗口
 	SDL_Window* w = SDL_CreateWindow(title, width, height, 0);
 	if (!w) {
@@ -69,24 +67,36 @@ void Renderer::renderRect(const SDL_FRect& rect, const SDL_Color& color) const n
 
 }
 
-void Renderer::renderText(const std::string& text, const SDL_Color& color, const SDL_FRect& rect) noexcept{
+void Renderer::renderText(const std::string& text, const SDL_Color& color, const SDL_FRect& rect, const int textsize) noexcept{
 	TTF_Text* t = TTF_CreateText(textEngine_.get(), font_.get(), text.c_str(), text.size()); // 创建文本对象，实际使用时需要检查返回值是否成功
 	if (!t) {
 		SDL_Log("Failed to create text: %s", SDL_GetError());
 		return;
 	}
+	TTF_SetFontSize(font_.get(), textsize); // 设置字体大小
 	text_.reset(t); // 使用 unique_ptr 管理 TTF_Text 资源，确保异常安全
 	TTF_SetTextColor(text_.get(), color.r, color.g, color.b, color.a); // 设置文本颜色
-	TTF_DrawRendererText(text_.get(), static_cast<int>(rect.x), static_cast<int>(rect.y)); // 绘制文本到渲染器
+	int w = 0, h = 0;
+	TTF_GetTextSize(text_.get(), &w, &h);
+	//居中
+	float x = rect.x + (rect.w - w) / 2.0f;
+	float y = rect.y + (rect.h - h) / 2.0f;
+	TTF_DrawRendererText(text_.get(), x, y); // 绘制文本到渲染器
 }
 
-void Renderer::renderTexts(const std::vector<std::string>& texts, const std::vector<SDL_FRect>& rects, const SDL_Color& color) noexcept{
+void Renderer::renderTexts(const std::vector<std::string>& texts, const std::vector<SDL_FRect>& rects, const SDL_Color& color, const int textsize) noexcept{
 	for(int i = 0; i < texts.size() && i < rects.size(); ++i) {
-		renderText(texts[i], color, rects[i]); // 逐个绘制文本
+		renderText(texts[i], color, rects[i], textsize); // 逐个绘制文本
 	}
+}
+
+void Renderer::renderDirtyBlocks() const noexcept{
+
 }
 
 void Renderer::reDefaultAndPresent() const noexcept{
 	SDL_SetRenderDrawColor(renderer_.get(), 0, 0, 0, 255); // 恢复默认绘制颜色
+	TTF_SetFontSize(font_.get(), 30); // 恢复字体大小
 	SDL_RenderPresent(renderer_.get()); // 显示渲染结果，更新窗口内容
 }
+

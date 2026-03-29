@@ -1,7 +1,7 @@
 #pragma once
-#include "StateMachine.h"
 #include <memory>
 #include <SDL3/SDL.h>
+#include "StateMachine.h"
 
 class Game {
 public:
