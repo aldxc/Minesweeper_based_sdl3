@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <stack>
 #include "State.h"
 
 
@@ -7,6 +8,7 @@
 class StateMachine {
 private:
 	std::unique_ptr<State> currentState_;
+	std::stack<std::unique_ptr<State>> stateStack_; // 状态栈，用于实现暂停状态的状态保存和恢复
 public:
 	StateMachine() : currentState_(createState({ StateType::Menu,0,0,0 })) {}
 	std::unique_ptr<State> createState(State::StateTransInfo info); //工厂函数，根据 StateType 创建对应的 State 实例
@@ -18,10 +20,31 @@ public:
 	void update(SDL_Event& event) {
 		auto newState = currentState_->update(event); // 调用当前状态的 update() 方法，获取可能的状态切换
 		if (newState == std::nullopt) return; // 如果 update() 返回 std::nullopt，表示状态未改变，直接返回
-		else changeStates(newState.value()); // 否则切换到新的状态
+		else {
+			if (newState->state == StateType::Paused) stateStack_.push(std::move(currentState_));
+			else if (currentState_->is(StateType::Paused) && newState->state != StateType::Paused) {
+				if (newState->state == StateType::Playing && newState->mines == -1) {
+					currentState_ = std::move(stateStack_.top());
+					stateStack_.pop();
+					return;
+				}
+				else {
+					while (!stateStack_.empty()) {
+						stateStack_.pop(); // 如果从 Paused 状态切换到非 Playing 状态，清空状态栈
+					}
+				}
+			}
+			changeStates(newState.value()); // 否则切换到新的状态
+		}
 	}
 	void render() {
+		Renderer::getInstance().beginRender();
+
+		if (currentState_.get()->is(StateType::Paused) && !stateStack_.empty()) 
+			stateStack_.top()->renderer(false); // 如果当前状态是 Paused 且状态栈不为空，渲染栈顶状态（即暂停前的状态）
 		currentState_->renderer(); // 调用当前状态的 renderer() 方法进行渲染
+
+		Renderer::getInstance().reDefaultAndPresent(); // 渲染完成后调用 reDefaultAndPresent() 刷新屏幕
 	}
 };
 
@@ -33,11 +56,10 @@ inline std::unique_ptr<State> StateMachine::createState(State::StateTransInfo in
 	case StateType::Playing:
 		return std::make_unique<PlayingState>(info);
 	case StateType::Won:
-		return std::make_unique<WonState>();
 	case StateType::Lost:
-		return std::make_unique<LostState>();
+		return std::make_unique<EndState>(info);
 	case StateType::Paused:
-		return std::make_unique<PausedState>();
+		return std::make_unique<PausedState>(info);
 	default:
 		return std::make_unique<MenuState>();// 默认返回菜单状态
 	}

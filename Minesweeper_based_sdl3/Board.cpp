@@ -3,18 +3,22 @@
 // 实现 Board 类方法
 
 Board::Board(int rows, int cols, int mines) noexcept : rows_(rows), cols_(cols), mineCount_(mines), hitMine_(false), placed_(false),rng_(std::random_device()()) {
-	cells_.resize(rows_ * cols_); // 预留足够空间，避免频繁 realloc
-	dirtyCells_.reserve(rows_ * cols_); // 预留足够空间，避免频繁 realloc
-	for(int i = 0; i < rows * cols; ++i) {
-		cells_[i] = 0b00010000; // 初始时所有格子都未掀开（第7位为0），不含雷（第8位为0），未标记（第6位为0），需要渲染（第5位为1）
-		dirtyCells_.push_back({ i / cols_, i % cols_, 9}); // 初始时所有格子状态为9（未掀开）
-	}
-	
+
+	resetBoard(); // 初始化重置棋盘状态
 }
 
-//void Board::initBoard() noexcept{
-//	placeMines(-1, -1);
-//}
+void Board::resetBoard() noexcept{
+	cells_.clear(); // 清空原有格子状态
+	cells_.resize(rows_ * cols_); // 预留足够空间，避免频繁 realloc
+	dirtyCells_.reserve(rows_ * cols_); // 预留足够空间，避免频繁 realloc
+	for (int i = 0; i < rows_ * cols_; ++i) {
+		cells_[i] = 0b00010000; // 初始时所有格子都未掀开（第7位为0），不含雷（第8位为0），未标记（第6位为0），需要渲染（第5位为1）
+		dirtyCells_.push_back({ i / cols_, i % cols_, 9 }); // 初始时所有格子状态为9（未掀开）
+	}
+	hitMine_ = false; // 重置踩雷状态
+	placed_ = false; // 重置布雷状态，等待首次点击时布雷
+	flagCount_ = 0; // 重置标记数量
+}
 
 void Board::reveal(int r, int c) noexcept{
 	if (!placed_) {
@@ -33,15 +37,33 @@ void Board::reveal(int r, int c) noexcept{
 	
 	uint8_t s = cells_[index(r, c)] & maskNum;
 	floodReveal(r, c);
-	//else {
-	//	cells_[index(r, c)] |= maskRevealed; // 设置已打开标记
-	//	dirtyCells_.push_back({ r, c, s }); // 添加到脏格子列表
-	//}
+}
+
+void Board::doubleClickReveal(int r, int c) noexcept{
+	if(cells_[index(r, c)] & maskRevealed) { // 只有已打开的格子才响应双击
+		int flaggedCount = countFlagged(r, c);
+		uint8_t num = cells_[index(r, c)] & maskNum;
+		if (flaggedCount == num) { // 如果标记数量等于数字，打开周围未标记的格子
+			for (int dr = -1; dr <= 1; ++dr) {
+				for (int dc = -1; dc <= 1; ++dc) {
+					if (dr == 0 && dc == 0) continue;
+					int nr = r + dr;
+					int nc = c + dc;
+					if (nr >= 0 && nr < rows_ && nc >= 0 && nc < cols_) {
+						if (!(cells_[index(nr, nc)] & maskFlagged)) {
+							reveal(nr, nc); // 打开周围未标记的格子
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 void Board::toggleFlag(int r, int c) noexcept{
-	if (cells_[index(r, c)] ^ maskRevealed) {
+	if (!(cells_[index(r, c)] & maskRevealed)) {
 		cells_[index(r, c)] ^= maskFlagged; // 切换标记状态
+		flagCount_ += (cells_[index(r, c)] & maskFlagged) ? 1 : -1; // 更新标记数量
 		uint8_t s = cells_[index(r, c)] & maskFlagged ? 12 : 9; // 更新状态：12表示旗子，9表示未掀开
 		dirtyCells_.push_back({ r, c, s }); // 添加到脏格子列表
 	}
@@ -51,6 +73,15 @@ const std::vector<Board::transInfo> Board::render() const noexcept{
 	std::vector<transInfo> toRender = std::move(dirtyCells_); // 获取当前脏格子列表
 	dirtyCells_.clear(); // 清空脏格子列表，准备下一轮更新
 	return toRender; // 返回需要渲染的格子列表
+}
+
+bool Board::isWin() const noexcept{
+	for (int i = 0; i < rows_ * cols_; ++i) {
+		if (!(cells_[i] & maskIsMine) && !(cells_[i] & maskRevealed)) {
+			return false; // 只要有一个非雷格子未被打开，就不是胜利
+		}
+	}
+	return true;
 }
 
 //const std::vector<uint8_t>& Board::render() const noexcept {
@@ -90,7 +121,7 @@ void Board::placeMines(int safeR, int safeC){
 
 void Board::placeNum() noexcept{
 	for (int i = 0; i < rows_ * cols_; ++i) {
-		if(cells_[i] ^ maskIsMine) {
+		if(!(cells_[i] & maskIsMine)) {
 			int r = i / cols_;
 			int c = i % cols_;
 			for (int dr = -1; dr <= 1; ++dr) {
@@ -112,6 +143,13 @@ void Board::floodReveal(int r, int c) noexcept{
 	int idx = index(r, c);
 	if (cells_[idx] & maskRevealed) return; // 已经打开，直接返回
 	cells_[idx] |= maskRevealed; // 设置已打开标记
+
+	if (cells_[idx] & maskIsMine) {
+		dirtyCells_.push_back({ r, c, 11 }); // 踩雷状态
+		hitMine_ = true;
+		return;
+	}
+
 	uint8_t s = cells_[idx] & maskNum; // 获取数字状态
 	dirtyCells_.push_back(transInfo{ r, c, s }); // 添加到脏格子列表
 	if (s == 0) { // 如果是空格，继续递归打开周围格子

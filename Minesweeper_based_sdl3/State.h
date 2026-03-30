@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include <optional>
+#include <chrono>
 #include "Renderer.h"
 #include "Board.h"
 
@@ -30,7 +31,7 @@ public:
     StateType get() const noexcept { return state_; }
 	//void set(StateType s) noexcept { state_ = s; }// 状态机的状态切换由 StateMachine 负责，State 类只提供接口查询当前状态
     bool is(StateType s) const noexcept { return state_ == s; }
-    virtual void renderer() const noexcept = 0; // 状态渲染
+    virtual void renderer(bool flag = true) const noexcept = 0; // 状态渲染
 	virtual std::optional<StateTransInfo> update(SDL_Event& event) noexcept = 0; // 更新状态机内部逻辑 handleInput() 处理输入事件，update() 处理状态更新（如动画、计时器等）
 
 private:
@@ -42,7 +43,7 @@ class MenuState : public State {
 public:
     explicit MenuState() noexcept;
 	~MenuState() noexcept override = default;
-    void renderer() const noexcept override final;
+    void renderer(bool flag = true) const noexcept override final;
     std::optional<StateTransInfo> update(SDL_Event& event) noexcept override final;
 private:
 	std::vector<SDL_FRect> buttonRects_; // 存储按钮 east-muedium-hard 
@@ -56,33 +57,48 @@ private:
 class PlayingState : public State {
 public:
     explicit PlayingState(StateTransInfo info) noexcept;
-    void renderer() const noexcept override final;
+    void renderer(bool flag = true) const noexcept override final;
+    std::optional<StateTransInfo> update(SDL_Event& event) noexcept override final;
+    void updateTimer(bool flag) const noexcept;
+private:
+    Board board_; // 扫雷棋盘逻辑
+    std::vector<SDL_FRect> upBlocks_; //重开，计时器，雷数，暂停等
+    mutable float timer_{ 0 }; // 计时器，单位为秒
+    mutable std::chrono::time_point< std::chrono::high_resolution_clock> lastTime_{ std::chrono::high_resolution_clock::now() }; // 上次更新时间点，用于计算增量时间
+
+    //test
+    SDL_FRect tempWin{ 0, 0, 0, 0 };
+};
+
+//-----------------------------EndState-----------------------------//
+class EndState : public State {
+public:
+    explicit EndState(StateTransInfo info) noexcept;
+    void renderer(bool flag = true) const noexcept override final;
     std::optional<StateTransInfo> update(SDL_Event& event) noexcept override final;
 private:
-	Board board_; // 扫雷棋盘逻辑
+	SDL_FRect winMessageRect_{ 0, 0, 0, 0 }; // 存储胜利消息位置和大小
+	SDL_FRect restartButtonRect_{ 0, 0, 0, 0 }; // 存储重开按钮位置和大小
+	SDL_FRect backToMenuButtonRect_{ 0, 0, 0, 0 }; // 存储返回菜单按钮位置和大小
+
+    StateTransInfo info_;
 };
 
-//-----------------------------WonState-----------------------------//
-class WonState : public State {
-public:
-    explicit WonState() noexcept : State(StateType::Won) {}
-    void renderer() const noexcept override final;
-    std::optional<StateTransInfo> update(SDL_Event& event) noexcept override final;
-};
-
-//-----------------------------LostState-----------------------------//
-class LostState : public State {
-public:
-    explicit LostState() noexcept : State(StateType::Lost) {}
-    void renderer() const noexcept override final;
-    std::optional<StateTransInfo> update(SDL_Event& event) noexcept override final;
-};
+////-----------------------------LostState-----------------------------//
+//class LostState : public State {
+//public:
+//    explicit LostState() noexcept : State(StateType::Lost) {}
+//    void renderer() const noexcept override final;
+//    std::optional<StateTransInfo> update(SDL_Event& event) noexcept override final;
+//};
 
 //-----------------------------PausedState-----------------------------//
 class PausedState : public State {
-    //状态栈
 public:
-    explicit PausedState() noexcept : State(StateType::Paused) {}
-    void renderer() const noexcept override final;
+    explicit PausedState(StateTransInfo info) noexcept;
+    void renderer(bool flag = true) const noexcept override final;
     std::optional<StateTransInfo> update(SDL_Event& event) noexcept override final;
+private:
+	std::vector<SDL_FRect> buttonRects_; // 存储按钮位置和大小
+    StateTransInfo info_;
 };

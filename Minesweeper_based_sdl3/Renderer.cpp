@@ -50,6 +50,7 @@ void Renderer::initResources(const char* title, int width, int height) noexcept{
 	}
 	textEngine_.reset(te); // 使用 unique_ptr 管理 TTF_TextEngine 资源，确保异常安全
 
+	boardUI_.reset(); // 初始化棋盘 UI 纹理，初始为 nullptr，实际使用时会根据需要创建和更新纹理
 }
 
 void Renderer::renderRects(const std::vector<SDL_FRect>& rects, const SDL_Color& color) const noexcept{
@@ -141,6 +142,30 @@ void Renderer::updateWindow(int width, int height) noexcept{
 	dirtyBlockIndices_.resize(cols * rows);
 	// 将新的脏块数组初始化为“未掀开状态”（9），避免未初始化或默认 0 导致错误显示
 	dirtyBlockIndices_.assign(cols * rows, 9);
+}
+
+void Renderer::saveBoardUI(const std::vector<SDL_FRect>& rects, const std::vector<std::string>& strings, int size, SDL_Color color) noexcept{
+	int w = 0;
+	SDL_GetWindowSize(window_.get(), &w, nullptr);
+	SDL_Texture* t = SDL_CreateTexture(renderer_.get(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, UP_BLOCKS * CELL_SIZE); // 创建目标纹理，大小根据第一个 rect 定义
+	if (!t) {
+		SDL_Log("Failed to create board UI texture: %s", SDL_GetError());
+		return;
+	}
+
+	SDL_SetRenderTarget(renderer_.get(), t); // 设置渲染目标为 boardUI_ 纹理
+	SDL_RenderClear(renderer_.get());
+	renderTexts(strings, rects, color, size); // 在 boardUI_ 纹理上绘制文本
+	SDL_SetRenderTarget(renderer_.get(), nullptr);
+
+	boardUI_.reset(t); // 使用 unique_ptr 管理 SDL_Texture 资源，确保异常安全
+}
+
+void Renderer::renderBoardUI() const noexcept{
+	int w = 0;
+	SDL_GetWindowSize(window_.get(), &w, nullptr);
+	SDL_FRect dstrect{ 0,0, w, UP_BLOCKS * CELL_SIZE };
+	SDL_RenderTexture(renderer_.get(), boardUI_.get(), nullptr, &dstrect); // 绘制保存的棋盘 UI 纹理到窗口
 }
 
 //暂时弃用
