@@ -5,6 +5,7 @@
 
 
 // StateMachine: 管理当前状态并提供接口切换状态和更新状态
+//game类已解耦，状态机只负责状态管理，游戏逻辑和输入处理由各个状态类实现
 class StateMachine {
 private:
 	std::unique_ptr<State> currentState_;
@@ -12,7 +13,6 @@ private:
 public:
 	StateMachine() : currentState_(createState({ StateType::Menu,0,0,0 })) {}
 	std::unique_ptr<State> createState(State::StateTransInfo info); //工厂函数，根据 StateType 创建对应的 State 实例
-	//game类已解耦，状态机只负责状态管理，游戏逻辑和输入处理由各个状态类实现
 	void changeStates(State::StateTransInfo info) {
 		if (currentState_ && currentState_->is(info.state)) return; // 如果当前状态已经是目标状态，直接返回
 		currentState_ = createState(info); // 创建新状态并替换当前状态
@@ -23,7 +23,7 @@ public:
 		else {
 			if (newState->state == StateType::Paused) stateStack_.push(std::move(currentState_));
 			else if (currentState_->is(StateType::Paused) && newState->state != StateType::Paused) {
-				if (newState->state == StateType::Playing && newState->mines == -1) {
+				if (newState->state == StateType::Playing && newState->mines == -1) { //使用特定标记判断是否从 Paused 状态切换回保存的 Playing 状态
 					currentState_ = std::move(stateStack_.top());
 					stateStack_.pop();
 					return;

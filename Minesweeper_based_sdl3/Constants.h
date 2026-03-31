@@ -3,7 +3,7 @@
 
 constexpr int CELL_SIZE = 40; // 每个格子的像素尺寸
 constexpr int UP_BLOCKS = 5;//上方空闲区域像素尺寸
-constexpr std::array<std::array<int, 3>, 3> BORAD_INFO = { {
+constexpr std::array<std::array<int, 3>, 3> BOARD_INFO = { {
     {10, 10, 20},
     {16, 16, 40},
     {24, 24, 99}

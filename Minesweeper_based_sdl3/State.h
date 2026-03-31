@@ -11,6 +11,7 @@
 // 状态
 enum class StateType { Menu, Playing, Won, Lost, Paused };
 
+//-----------------------------AbstractStateBase-----------------------------//
 class State {
 public:
     struct StateTransInfo {
@@ -29,10 +30,9 @@ public:
     State& operator=(State&&) = delete;
 
     StateType get() const noexcept { return state_; }
-	//void set(StateType s) noexcept { state_ = s; }// 状态机的状态切换由 StateMachine 负责，State 类只提供接口查询当前状态
     bool is(StateType s) const noexcept { return state_ == s; }
     virtual void renderer(bool flag = true) const noexcept = 0; // 状态渲染
-	virtual std::optional<StateTransInfo> update(SDL_Event& event) noexcept = 0; // 更新状态机内部逻辑 handleInput() 处理输入事件，update() 处理状态更新（如动画、计时器等）
+	virtual std::optional<StateTransInfo> update(SDL_Event& event) noexcept = 0; // 更新状态机内部逻辑 handleInput() 处理输入事件，update() 处理状态更新
 
 private:
     StateType state_;
@@ -67,11 +67,11 @@ private:
     mutable std::chrono::time_point< std::chrono::high_resolution_clock> lastTime_{ std::chrono::high_resolution_clock::now() }; // 上次更新时间点，用于计算增量时间
 
     //test
-    SDL_FRect tempWin{ 0, 0, 0, 0 };
+	SDL_FRect tempWin{ 0, 0, 0, 0 };// 用于测试胜利条件的临时格子
 };
 
 //-----------------------------EndState-----------------------------//
-class EndState : public State {
+class EndState : public State { // 包含胜利和失败两种结束状态，根据传入的 StateTransInfo 中的 state 字段区分
 public:
     explicit EndState(StateTransInfo info) noexcept;
     void renderer(bool flag = true) const noexcept override final;
@@ -83,14 +83,6 @@ private:
 
     StateTransInfo info_;
 };
-
-////-----------------------------LostState-----------------------------//
-//class LostState : public State {
-//public:
-//    explicit LostState() noexcept : State(StateType::Lost) {}
-//    void renderer() const noexcept override final;
-//    std::optional<StateTransInfo> update(SDL_Event& event) noexcept override final;
-//};
 
 //-----------------------------PausedState-----------------------------//
 class PausedState : public State {

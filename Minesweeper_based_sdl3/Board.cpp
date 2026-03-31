@@ -9,7 +9,7 @@ Board::Board(int rows, int cols, int mines) noexcept : rows_(rows), cols_(cols),
 
 void Board::resetBoard() noexcept{
 	cells_.clear(); // 清空原有格子状态
-	cells_.resize(rows_ * cols_); // 预留足够空间，避免频繁 realloc
+	cells_.resize(rows_ * cols_); // 开辟新的格子空间
 	dirtyCells_.reserve(rows_ * cols_); // 预留足够空间，避免频繁 realloc
 	for (int i = 0; i < rows_ * cols_; ++i) {
 		cells_[i] = 0b00010000; // 初始时所有格子都未掀开（第7位为0），不含雷（第8位为0），未标记（第6位为0），需要渲染（第5位为1）
@@ -26,8 +26,6 @@ void Board::reveal(int r, int c) noexcept{
 		placeNum(); // 计算数字
 		placed_ = true;
 	}
-	//if (cells_[index(r, c)] & maskRevealed) return; // 已经打开，直接返回
-	//后续需要自动打开周围格子时，不能因为已经打开而阻止继续递归，因此不在此处直接返回，而是让后续逻辑处理
 	if (cells_[index(r, c)] & maskFlagged) return; // 已经标记为雷，不能打开，直接返回)
 	if (cells_[index(r, c)] & maskIsMine) {
 		dirtyCells_.push_back({ r, c, 11 }); // 踩雷状态
@@ -40,7 +38,7 @@ void Board::reveal(int r, int c) noexcept{
 }
 
 void Board::doubleClickReveal(int r, int c) noexcept{
-	if(cells_[index(r, c)] & maskRevealed) { // 只有已打开的格子才响应双击
+	if(cells_[index(r, c)] & maskRevealed) { // 只有已打开的格子才响应
 		int flaggedCount = countFlagged(r, c);
 		uint8_t num = cells_[index(r, c)] & maskNum;
 		if (flaggedCount == num) { // 如果标记数量等于数字，打开周围未标记的格子
@@ -84,13 +82,7 @@ bool Board::isWin() const noexcept{
 	return true;
 }
 
-//const std::vector<uint8_t>& Board::render() const noexcept {
-//	return cells_; // 返回当前所有格子的状态，实际使用时需要根据 Board 类的接口调整
-//}
-
-
 void Board::placeMines(int safeR, int safeC){
-
 	// 构建候选位置列表，排除禁止区（3x3）
 	std::vector<int> candidates;
 	candidates.reserve(rows_ * cols_);
@@ -107,10 +99,7 @@ void Board::placeMines(int safeR, int safeC){
 	if (static_cast<int>(candidates.size()) < mineCount_) 
 		mineCount_ = static_cast<int>(candidates.size());
 
-	std::shuffle(candidates.begin(), candidates.end(), rng_); // 随机打乱候选位置
-
-	//cells_.clear(); // 清空原有格子状态
-	//cells_.resize(rows_ * cols_);
+	std::shuffle(candidates.begin(), candidates.end(), rng_); // 使用shuffle算法配合引擎随机打乱候选位置
 	std::fill(cells_.begin(), cells_.end(), 0);// 重置所有格子状态为“需要渲染”（第5位为1），其他位为0
 
 	for (int i = 0; i < mineCount_; ++i) {

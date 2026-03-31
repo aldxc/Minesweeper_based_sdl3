@@ -3,13 +3,12 @@
 // 实现 Game 类方法
 Game::Game() : running_(true) {
 	if (!init()) {
-		SDL_Log("Failed to initialize game."); // 初始化失败，记录日志并退出
+		SDL_Log("Failed to initialize game."); // 初始化失败
 		return;
 	}
 	stateMachine_ = std::make_unique<StateMachine>(); // 创建状态机实例，初始状态为菜单
 
 	resource_ = std::make_unique<Resource>();
-	initResources(); 
 }
 
 void Game::Run() noexcept {
@@ -18,14 +17,14 @@ void Game::Run() noexcept {
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
 			if(event.type == SDL_EVENT_QUIT) {
-				running_ = false; // 处理退出事件，设置运行标志为 false 以退出主循环
+				running_ = false; 
 			}
 
 			stateMachine_->update(event);
 		}
 		stateMachine_->render(); // 渲染当前状态
 
-		SDL_Delay(16);//
+		SDL_Delay(16);//控制帧率为约 60 FPS
 	}
 }
 
@@ -43,7 +42,4 @@ bool Game::init() noexcept{
 	return true;
 }
 
-bool Game::initResources() noexcept{
-	// 创建 Resource 实例，加载游戏资源，如地雷和旗子图形，使用 RAII 管理资源生命周期
-	return false;
-}
+

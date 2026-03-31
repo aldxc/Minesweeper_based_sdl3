@@ -3,10 +3,12 @@
 // 实现 Renderer 类方法
 
 Renderer::Renderer(){
+	//800，600默认初始化窗口，最好保存到constants中
 	initResources("Minesweeper", 800, 600); // 初始化资源
 }
 
 Renderer::~Renderer() {
+	//析构需要保证正确顺序
 	// 先显式释放依赖于 SDL_ttf/SDL 的资源
 	text_.reset();
 	textEngine_.reset();
@@ -14,19 +16,18 @@ Renderer::~Renderer() {
 	renderer_.reset();
 	window_.reset();
 
-
 	TTF_Quit(); // 退出 SDL_ttf，释放相关资源
 	SDL_Quit(); // 退出 SDL，释放所有资源
 }
 
 void Renderer::initResources(const char* title, int width, int height) noexcept{
 	// 创建 SDL 窗口
-	SDL_Window* w = SDL_CreateWindow(title, width, height, 0);
+	SDL_Window* w = SDL_CreateWindow(title, width, height, 0);	// 创建窗口
 	if (!w) {
 		SDL_Log("Failed to create window: %s", SDL_GetError());
 		return;
 	}
-	window_.reset(w); // 使用 unique_ptr 管理 SDL_Window 资源，确保异常安全
+	window_.reset(w); // 使用 unique_ptr 获取管理 SDL_Window 资源，确保异常安全
 
 	// 创建 SDL 渲染器
 	SDL_Renderer* r = SDL_CreateRenderer(window_.get(), nullptr); // 创建渲染器，关联到窗口
@@ -34,37 +35,33 @@ void Renderer::initResources(const char* title, int width, int height) noexcept{
 		SDL_Log("Failed to create renderer: %s", SDL_GetError());
 		return;
 	}
-	renderer_.reset(r); // 使用 unique_ptr 管理 SDL_Renderer 资源，确保异常安全
+	renderer_.reset(r); // 使用 unique_ptr 获取管理 SDL_Renderer 资源，确保异常安全
 
-	TTF_Font* f = TTF_OpenFont("1.ttf", 30); // 加载字体，设置字体大小（实际使用时需要检查返回值是否成功）
+	TTF_Font* f = TTF_OpenFont("1.ttf", 30); // 加载字体，设置字体大小（默认可修改），路径为相对路径
 	if (!f) {
 		SDL_Log("Failed to load font: %s", SDL_GetError());
 		return;
 	}
-	font_.reset(f); // 使用 unique_ptr 管理 TTF_Font 资源，确保异常安全
+	font_.reset(f); // 使用 unique_ptr 获取管理 TTF_Font 资源，确保异常安全
 
 	TTF_TextEngine* te = TTF_CreateRendererTextEngine(renderer_.get()); // 创建文本引擎
 	if (!te) {
 		SDL_Log("Failed to create text engine: %s", SDL_GetError());
 		return;
 	}
-	textEngine_.reset(te); // 使用 unique_ptr 管理 TTF_TextEngine 资源，确保异常安全
+	textEngine_.reset(te); // 使用 unique_ptr 获取管理 TTF_TextEngine 资源，确保异常安全
 
-	boardUI_.reset(); // 初始化棋盘 UI 纹理，初始为 nullptr，实际使用时会根据需要创建和更新纹理
+	boardUI_.reset(); // 初始化棋盘 UI 纹理，初始为 nullptr
 }
 
 void Renderer::renderRects(const std::vector<SDL_FRect>& rects, const SDL_Color& color) const noexcept{
-
 	SDL_SetRenderDrawColor(renderer_.get(), color.r, color.g, color.b, color.a); // 设置绘制颜色
 	SDL_RenderRects(renderer_.get(), rects.data(), static_cast<int>(rects.size())); // 批量绘制矩形边框
-
 }
 
 void Renderer::renderRect(const SDL_FRect& rect, const SDL_Color& color) const noexcept{
-
 	SDL_SetRenderDrawColor(renderer_.get(), color.r, color.g, color.b, color.a); // 设置绘制颜色
 	SDL_RenderRect(renderer_.get(), &rect); // 绘制矩形边框
-
 }
 
 void Renderer::renderFillRect(const SDL_FRect& rect, const SDL_Color& color) const noexcept{
@@ -73,7 +70,7 @@ void Renderer::renderFillRect(const SDL_FRect& rect, const SDL_Color& color) con
 }
 
 void Renderer::renderText(const std::string& text, const SDL_Color& color, const SDL_FRect& rect, const int textsize) noexcept{
-	TTF_Text* t = TTF_CreateText(textEngine_.get(), font_.get(), text.c_str(), text.size()); // 创建文本对象，实际使用时需要检查返回值是否成功
+	TTF_Text* t = TTF_CreateText(textEngine_.get(), font_.get(), text.c_str(), text.size()); // 创建文本对象
 	if (!t) {
 		SDL_Log("Failed to create text: %s", SDL_GetError());
 		return;
@@ -104,10 +101,6 @@ void Renderer::renderDirtyBlocks(const std::vector<Board::transInfo>& blocks) co
 	if (rows < 0) rows = 0;
 
 	if(!blocks.empty()) updateTexture(blocks, rows, cols);
-
-	//test
-	//SDL_FRect rect{ 0,0,CELL_SIZE, CELL_SIZE };
-	//SDL_RenderTexture(renderer_.get(), textures_[9], nullptr, &rect); // 绘制未掀开状态的纹理到整个窗口，测试纹理是否正确加载
 
 	for (int i = 0; i < dirtyBlockIndices_.size(); ++i) {
 		int stateIdx = dirtyBlockIndices_[i];
@@ -147,7 +140,7 @@ void Renderer::updateWindow(int width, int height) noexcept{
 void Renderer::saveBoardUI(const std::vector<SDL_FRect>& rects, const std::vector<std::string>& strings, int size, SDL_Color color) noexcept{
 	int w = 0;
 	SDL_GetWindowSize(window_.get(), &w, nullptr);
-	SDL_Texture* t = SDL_CreateTexture(renderer_.get(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, UP_BLOCKS * CELL_SIZE); // 创建目标纹理，大小根据第一个 rect 定义
+	SDL_Texture* t = SDL_CreateTexture(renderer_.get(), SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, w, UP_BLOCKS * CELL_SIZE); // 创建目标纹理，大小为上方空白区域
 	if (!t) {
 		SDL_Log("Failed to create board UI texture: %s", SDL_GetError());
 		return;
@@ -167,23 +160,6 @@ void Renderer::renderBoardUI() const noexcept{
 	SDL_FRect dstrect{ 0,0, w, UP_BLOCKS * CELL_SIZE };
 	SDL_RenderTexture(renderer_.get(), boardUI_.get(), nullptr, &dstrect); // 绘制保存的棋盘 UI 纹理到窗口
 }
-
-//暂时弃用
-//void Renderer::renderBoard(const std::vector<uint8_t>& board) const noexcept{
-//	int windowWidth = 0, windowHeight = 0;
-//	SDL_GetWindowSize(window_.get(), &windowWidth, &windowHeight);
-//	int rows = windowHeight / CELL_SIZE - UP_BLOCKS;//行数
-//	int cols = windowWidth / CELL_SIZE;//列数
-//
-//	for (int i = 0; i < board.size(); ++i) {
-//		SDL_FRect dstrect{
-//			i, i * CELL_SIZE, CELL_SIZE, CELL_SIZE
-//		};
-//		//if (board[i] & Board::maskDirty) {
-//			SDL_RenderTexture(renderer_.get(), textures_[9], nullptr, &dstrect); // 绘制未掀开状态的纹理到整个窗口，测试纹理是否正确加载
-//		//}
-//	}
-//}
 
 void Renderer::updateTexture(const std::vector<Board::transInfo>& blocks, int rows, int cols) const noexcept{
 	for(int i = 0; i < blocks.size(); ++i) {

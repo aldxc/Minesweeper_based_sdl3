@@ -30,7 +30,7 @@ std::optional<State::StateTransInfo> MenuState::update(SDL_Event& event) noexcep
 		SDL_FPoint mousePos{ event.button.x, event.button.y };
 		for (int i = 0; i < buttonCount_; ++i) {
 			if (SDL_PointInRectFloat(&mousePos, &buttonRects_[i])) {
-				return { { StateType::Playing, BORAD_INFO[i][0], BORAD_INFO[i][1], BORAD_INFO[i][2] } }; // 返回状态切换信息，切换到 Playing 状态并传递对应的行列数和地雷数
+				return { { StateType::Playing, BOARD_INFO[i][0], BOARD_INFO[i][1], BOARD_INFO[i][2] } }; // 返回状态切换信息，切换到 Playing 状态并传递对应的行列数和地雷数
 			}
 		}
 	}
@@ -60,7 +60,6 @@ void PlayingState::renderer(bool flag) const noexcept{
 
 	auto& d = board_.render();
 	Renderer::getInstance().renderDirtyBlocks(d); // 渲染脏格子，仅重绘改变的格子，优化性能
-	 // 获取需要渲染的格子列表（脏格子），并清空脏格子列表，实际使用时需要根据 Board 类的接口调整
 	//render UI
 	Renderer::getInstance().renderRects(upBlocks_, SDL_Color(100, 100, 100, 255)); // 绘制上方功能区背景
 	std::vector<std::string> upBlockLabels = { "Restart", std::to_string(static_cast<int>(timer_)), std::to_string(board_.getRemainingMines()), "Pause"};
@@ -168,19 +167,6 @@ std::optional<State::StateTransInfo> EndState::update(SDL_Event& event) noexcept
 	return std::nullopt;
 }
 
-//-----------------------------LostState-----------------------------//
-//void LostState::renderer() const noexcept{
-//	Renderer::getInstance().beginRender();
-//
-//	Renderer::getInstance().reDefaultAndPresent();
-//}
-//
-//std::optional<State::StateTransInfo> LostState::update(SDL_Event& event) noexcept{
-//	
-//	return std::nullopt;
-//}
-
-
 //---------------------------PausedState-----------------------------//
 PausedState::PausedState(StateTransInfo info) noexcept : State(StateType::Paused), info_(info) {
 	int windowWidth = 0, windowHeight = 0;
@@ -197,7 +183,7 @@ PausedState::PausedState(StateTransInfo info) noexcept : State(StateType::Paused
 			buttonRects_[i - 1].h
 		};
 	}
-	//resume restart back to menu
+	//resume //restart //back to menu
 }
 
 void PausedState::renderer(bool flag) const noexcept{
