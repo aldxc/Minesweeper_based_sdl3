@@ -361,3 +361,12 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# SDL3 头文件
+include/SDL3/
+include/SDL3_ttf/
+
+# SDL3 预编译库与调试符号
+lib/SDL3*.lib
+lib/SDL3*.pdb
+

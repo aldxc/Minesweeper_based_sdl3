@@ -1,4 +1,4 @@
-# Minesweeper_based_sdl3
+# Minesweeper-based-SDL3
 
 一个基于 `C++20`、`SDL3` 与 `SDL3_ttf` 的扫雷示例工程。
 
